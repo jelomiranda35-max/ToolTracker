@@ -22,8 +22,12 @@ class Instrument(Base):
     id = Column(Integer, primary_key=True, index=True)
     instrument_code = Column(String, unique=True, nullable=False, index=True)
     instrument_name = Column(String, nullable=False)
+    serial_number = Column(String, nullable=True)
     current_condition = Column(String, default="Functioning")
     status = Column(String, default="Available")
+    location = Column(String, nullable=True, default="AMTEC UPLB")
+    last_touch_date = Column(DateTime, nullable=True)
+    last_touch_by = Column(String, nullable=True)
     last_updated = Column(DateTime, default=datetime.utcnow)
 
     dispatch_items = relationship("DispatchItem", back_populates="instrument")
