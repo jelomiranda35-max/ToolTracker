@@ -3,14 +3,14 @@ import psycopg2
 from io import StringIO
 import os
 
-# ── CONFIG ── Update your PostgreSQL password below
-DB_HOST = "localhost"
-DB_PORT = 5432
-DB_NAME = "tooltracker"
+# ── CONFIG ──
+DB_HOST = "gondola.proxy.rlwy.net"
+DB_PORT = 23903
+DB_NAME = "railway"
 DB_USER = "postgres"
-DB_PASS = "1234"  # <-- change this to your actual PostgreSQL password
+DB_PASS = "RxcBkQEJxHZkCBfTFQhSjtFCjrLDEsfc"
 
-# ── CSV FILE PATH ── Put the CSV in the same folder as this script
+# ── CSV FILE PATH ──
 CSV_FILE = os.path.join(os.path.dirname(__file__), "AMaTS_INSTRUMENTS_csv.csv")
 
 def clean(val):
@@ -31,7 +31,6 @@ def parse_csv(filepath):
         if not any(row):
             continue
 
-        # Detect header row
         if "Instrument Code" in row:
             in_data = True
             continue
@@ -39,15 +38,10 @@ def parse_csv(filepath):
         if not in_data:
             continue
 
-        # Skip section label rows
         non_empty = [c for c in row if c.strip()]
         if len(non_empty) <= 2:
             continue
 
-        # Columns:
-        # [0]=empty, [1]=Instrument, [2]=Instrument Code, [3]=Barcode,
-        # [4]=Serial Number, [5]=Status, [6]=Status Notes,
-        # [7]=Location, [8]=Location Notes, [9]=Issued to, [10]=Last Touch
         try:
             instrument_name = clean(row[1]) if len(row) > 1 else None
             instrument_code = clean(row[2]) if len(row) > 2 else None
@@ -58,17 +52,14 @@ def parse_csv(filepath):
         except IndexError:
             continue
 
-        # Skip rows without name or code
         if not instrument_name or not instrument_code:
             continue
 
-        # Normalize condition
         if status_raw in ("For Repair", "For Condemning", "For Calibration"):
             condition = status_raw
         else:
             condition = "Functioning"
 
-        # Default location
         if not location:
             location = "AMTEC UPLB"
 
@@ -123,13 +114,14 @@ def main():
                 "Available",
                 inst["location"],
             ))
+            conn.commit()
             inserted += 1
             print(f"  ✓ {inst['instrument_code']} — {inst['instrument_name']}")
         except Exception as e:
+            conn.rollback()
             print(f"  ✗ ERROR on {inst['instrument_code']}: {e}")
             skipped += 1
 
-    conn.commit()
     cur.close()
     conn.close()
 

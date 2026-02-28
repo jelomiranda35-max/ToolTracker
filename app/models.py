@@ -11,6 +11,7 @@ class User(Base):
     name = Column(String, nullable=False)
     username = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
+    role = Column(String, default="staff", nullable=False)  # 'staff' or 'admin'
     created_at = Column(DateTime, default=datetime.utcnow)
 
     dispatches = relationship("Dispatch", back_populates="processed_by_user")
@@ -29,8 +30,6 @@ class Instrument(Base):
     last_touch_date = Column(DateTime, nullable=True)
     last_touch_by = Column(String, nullable=True)
     last_updated = Column(DateTime, default=datetime.utcnow)
-
-    dispatch_items = relationship("DispatchItem", back_populates="instrument")
 
 
 class Dispatch(Base):
@@ -56,9 +55,10 @@ class DispatchItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     dispatch_id = Column(Integer, ForeignKey("dispatches.id"), nullable=False)
-    instrument_id = Column(Integer, ForeignKey("instruments.id"), nullable=False)
+    instrument_code = Column(String, nullable=False)
+    instrument_name = Column(String, nullable=True)
     current_condition = Column(String, nullable=False, default="Functioning")
+    return_condition = Column(String, nullable=True)
     remarks = Column(Text, nullable=True)
 
     dispatch = relationship("Dispatch", back_populates="items")
-    instrument = relationship("Instrument", back_populates="dispatch_items")
