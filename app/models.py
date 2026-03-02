@@ -11,7 +11,7 @@ class User(Base):
     name = Column(String, nullable=False)
     username = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    role = Column(String, default="staff", nullable=False)  # 'staff' or 'admin'
+    role = Column(String, default="staff", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     dispatches = relationship("Dispatch", back_populates="processed_by_user")
@@ -46,8 +46,7 @@ class Dispatch(Base):
     conflict = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Student borrowing fields (null for regular dispatches)
-    dispatch_type = Column(String, default="regular", nullable=False)  # 'regular' or 'student'
+    dispatch_type = Column(String, default="regular", nullable=False)
     student_name = Column(String, nullable=True)
     student_id = Column(String, nullable=True)
 
@@ -60,10 +59,13 @@ class DispatchItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     dispatch_id = Column(Integer, ForeignKey("dispatches.id"), nullable=False)
-    instrument_code = Column(String, nullable=False)
+    # The real DB column is instrument_id (FK to instruments.id)
+    # NOT instrument_code — that was the bug causing 0 items to be saved
+    instrument_id = Column(Integer, ForeignKey("instruments.id"), nullable=True)
     instrument_name = Column(String, nullable=True)
     current_condition = Column(String, nullable=False, default="Functioning")
     return_condition = Column(String, nullable=True)
     remarks = Column(Text, nullable=True)
 
     dispatch = relationship("Dispatch", back_populates="items")
+    instrument = relationship("Instrument")
