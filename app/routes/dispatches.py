@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
-from app.models_OLD import Dispatch, DispatchItem, Instrument, User
+from app.models import Dispatch, DispatchItem, Instrument, User
 from app.auth import get_current_user, get_current_admin
 from pydantic import BaseModel
 from typing import List, Optional

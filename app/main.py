@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routes import instruments, dispatches, auth
+from app.routes import dispatches, instruments, auth
 
 app = FastAPI(title="AMTEC Tool Tracker API", version="1.3.0")
 
