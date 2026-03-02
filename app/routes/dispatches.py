@@ -10,10 +10,17 @@ from datetime import datetime
 router = APIRouter(prefix="/dispatches", tags=["Dispatches"])
 
 
+# ── Schemas ───────────────────────────────────────────────────────────────────
+
 class DispatchItemCreate(BaseModel):
     instrument_code: str
     current_condition: str
     remarks: Optional[str] = None
+
+
+class ReturnItemCondition(BaseModel):
+    instrument_code: str
+    return_condition: str
 
 
 class DispatchCreate(BaseModel):
@@ -23,6 +30,15 @@ class DispatchCreate(BaseModel):
     date_out: str
     remarks: Optional[str] = None
     items: List[DispatchItemCreate]
+    # Student borrowing fields — optional, ignored for regular dispatches
+    dispatch_type: Optional[str] = "regular"
+    student_name: Optional[str] = None
+    student_id: Optional[str] = None
+
+
+class ReturnDispatchRequest(BaseModel):
+    """Optional body for return — allows per-instrument condition reporting."""
+    item_conditions: Optional[List[ReturnItemCondition]] = None
 
 
 class DispatchItemResponse(BaseModel):
@@ -45,14 +61,18 @@ class DispatchResponse(BaseModel):
     date_out: str
     date_in: Optional[str] = None
     remarks: Optional[str] = None
+    dispatch_type: str = "regular"
+    student_name: Optional[str] = None
+    student_id: Optional[str] = None
     items: List[DispatchItemResponse] = []
 
     class Config:
         from_attributes = True
 
 
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
 def _build_item_list(items, db):
-    """Helper to build DispatchItemResponse list from DispatchItem rows."""
     result = []
     for item in items:
         instrument = db.query(Instrument).filter(
@@ -72,7 +92,27 @@ def _build_item_list(items, db):
     return result
 
 
-# ── GET all dispatches (staff + admin) ───────────────────────────────────────
+def _serialize_dispatch(d: Dispatch, db: Session) -> DispatchResponse:
+    items = db.query(DispatchItem).filter(
+        DispatchItem.dispatch_id == d.id
+    ).all()
+    processed_by_name = d.processed_by_user.name if d.processed_by_user else None
+    return DispatchResponse(
+        id=d.id,
+        dispatch_no=d.dispatch_no,
+        test_engineer=d.test_engineer,
+        processed_by_name=processed_by_name,
+        date_out=str(d.date_out),
+        date_in=str(d.date_in) if d.date_in else None,
+        remarks=d.remarks,
+        dispatch_type=d.dispatch_type or "regular",
+        student_name=d.student_name,
+        student_id=d.student_id,
+        items=_build_item_list(items, db),
+    )
+
+
+# ── GET all dispatches ────────────────────────────────────────────────────────
 
 @router.get("/", response_model=List[DispatchResponse])
 def get_dispatches(
@@ -80,28 +120,10 @@ def get_dispatches(
     current_user: User = Depends(get_current_user),
 ):
     dispatches = db.query(Dispatch).order_by(Dispatch.date_out.desc()).all()
-    result = []
-    for d in dispatches:
-        items = db.query(DispatchItem).filter(
-            DispatchItem.dispatch_id == d.id
-        ).all()
-        processed_by_name = None
-        if d.processed_by_user:
-            processed_by_name = d.processed_by_user.name
-        result.append(DispatchResponse(
-            id=d.id,
-            dispatch_no=d.dispatch_no,
-            test_engineer=d.test_engineer,
-            processed_by_name=processed_by_name,
-            date_out=str(d.date_out),
-            date_in=str(d.date_in) if d.date_in else None,
-            remarks=d.remarks,
-            items=_build_item_list(items, db),
-        ))
-    return result
+    return [_serialize_dispatch(d, db) for d in dispatches]
 
 
-# ── POST create dispatch (staff + admin) ─────────────────────────────────────
+# ── POST create dispatch ──────────────────────────────────────────────────────
 
 @router.post("/", response_model=DispatchResponse)
 def create_dispatch(
@@ -115,18 +137,24 @@ def create_dispatch(
     if existing:
         raise HTTPException(status_code=400, detail="Dispatch number already exists")
 
+    dispatch_type = data.dispatch_type or "regular"
+    if dispatch_type not in ("regular", "student"):
+        dispatch_type = "regular"
+
     dispatch = Dispatch(
         dispatch_no=data.dispatch_no,
         test_engineer=data.test_engineer,
         processed_by_id=current_user.id,
         date_out=data.date_out,
         remarks=data.remarks,
+        dispatch_type=dispatch_type,
+        student_name=data.student_name if dispatch_type == "student" else None,
+        student_id=data.student_id if dispatch_type == "student" else None,
     )
     db.add(dispatch)
     db.commit()
     db.refresh(dispatch)
 
-    item_list = []
     for item in data.items:
         instrument = db.query(Instrument).filter(
             Instrument.instrument_code == item.instrument_code
@@ -144,51 +172,49 @@ def create_dispatch(
             remarks=item.remarks,
         )
         db.add(di)
-        db.commit()
-        db.refresh(di)
-
-        item_list.append(DispatchItemResponse(
-            id=di.id,
-            instrument_code=di.instrument_code,
-            instrument_name=di.instrument_name or item.instrument_code,
-            current_condition=di.current_condition,
-            return_condition=None,
-            remarks=di.remarks,
-        ))
 
     db.commit()
-
-    return DispatchResponse(
-        id=dispatch.id,
-        dispatch_no=dispatch.dispatch_no,
-        test_engineer=dispatch.test_engineer,
-        processed_by_name=current_user.name,
-        date_out=str(dispatch.date_out),
-        date_in=None,
-        remarks=dispatch.remarks,
-        items=item_list,
-    )
+    db.refresh(dispatch)
+    return _serialize_dispatch(dispatch, db)
 
 
-# ── PUT return dispatch (staff + admin) ──────────────────────────────────────
+# ── PUT return dispatch ───────────────────────────────────────────────────────
 
 @router.put("/{dispatch_no}/return")
 def return_dispatch(
     dispatch_no: str,
+    body: Optional[ReturnDispatchRequest] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Mark a dispatch as returned.
+    Optionally accepts per-instrument return conditions in the request body.
+    The mobile app currently calls this without a body — return conditions are
+    stored locally on-device. Body support is here for future use / admin overrides.
+    """
     dispatch = db.query(Dispatch).filter(
         Dispatch.dispatch_no == dispatch_no
     ).first()
     if not dispatch:
         raise HTTPException(status_code=404, detail="Dispatch not found")
 
+    if dispatch.date_in is not None:
+        # Already returned — idempotent, just return success
+        return {"message": "Dispatch already returned"}
+
     dispatch.date_in = datetime.utcnow()
 
     items = db.query(DispatchItem).filter(
         DispatchItem.dispatch_id == dispatch.id
     ).all()
+
+    # Build condition lookup from body if provided
+    condition_map: dict[str, str] = {}
+    if body and body.item_conditions:
+        for ic in body.item_conditions:
+            condition_map[ic.instrument_code] = ic.return_condition
+
     for item in items:
         instrument = db.query(Instrument).filter(
             Instrument.instrument_code == item.instrument_code
@@ -198,34 +224,55 @@ def return_dispatch(
             instrument.last_touch_date = datetime.utcnow()
             instrument.last_touch_by = current_user.name
 
+            # Apply return condition if provided
+            if item.instrument_code in condition_map:
+                new_cond = condition_map[item.instrument_code]
+                instrument.current_condition = new_cond
+                item.return_condition = new_cond
+
     db.commit()
     return {"message": "Dispatch returned successfully"}
 
 
-# ── GET admin stats (admin only) ─────────────────────────────────────────────
+# ── GET admin stats ───────────────────────────────────────────────────────────
 
 @router.get("/admin/stats")
 def get_admin_stats(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ):
-    """Admin only — summary statistics for the dashboard."""
     total_dispatches = db.query(Dispatch).count()
-    active_dispatches = db.query(Dispatch).filter(Dispatch.date_in == None).count()
+    active_dispatches = db.query(Dispatch).filter(
+        Dispatch.date_in == None
+    ).count()
     returned_dispatches = total_dispatches - active_dispatches
 
     total_instruments = db.query(Instrument).count()
-    in_use = db.query(Instrument).filter(Instrument.status == "In Use").count()
-    available = db.query(Instrument).filter(Instrument.status == "Available").count()
+    in_use = db.query(Instrument).filter(
+        Instrument.status == "In Use"
+    ).count()
+    available = db.query(Instrument).filter(
+        Instrument.status == "Available"
+    ).count()
 
-    # Activity per user — count of dispatches processed
+    # Student dispatch counts
+    student_total = db.query(Dispatch).filter(
+        Dispatch.dispatch_type == "student"
+    ).count()
+    student_active = db.query(Dispatch).filter(
+        Dispatch.dispatch_type == "student",
+        Dispatch.date_in == None,
+    ).count()
+
     users = db.query(User).all()
     user_activity = []
     for u in users:
-        count = db.query(Dispatch).filter(Dispatch.processed_by_id == u.id).count()
+        count = db.query(Dispatch).filter(
+            Dispatch.processed_by_id == u.id
+        ).count()
         active_count = db.query(Dispatch).filter(
             Dispatch.processed_by_id == u.id,
-            Dispatch.date_in == None
+            Dispatch.date_in == None,
         ).count()
         user_activity.append({
             "user_id": u.id,
@@ -243,5 +290,7 @@ def get_admin_stats(
         "total_instruments": total_instruments,
         "instruments_in_use": in_use,
         "instruments_available": available,
+        "student_dispatches_total": student_total,
+        "student_dispatches_active": student_active,
         "user_activity": user_activity,
     }

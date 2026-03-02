@@ -46,6 +46,11 @@ class Dispatch(Base):
     conflict = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Student borrowing fields (null for regular dispatches)
+    dispatch_type = Column(String, default="regular", nullable=False)  # 'regular' or 'student'
+    student_name = Column(String, nullable=True)
+    student_id = Column(String, nullable=True)
+
     processed_by_user = relationship("User", back_populates="dispatches")
     items = relationship("DispatchItem", back_populates="dispatch")
 
