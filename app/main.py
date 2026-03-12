@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from app.routes import dispatches, instruments, auth, logs
+from app.routes import messages as messages_router
 from app.database import engine
 from sqlalchemy import text
 
@@ -30,12 +31,47 @@ with engine.connect() as conn:
             timestamp VARCHAR NOT NULL
         )
     """))
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS revert_requests (
+            id SERIAL PRIMARY KEY,
+            instrument_code VARCHAR NOT NULL,
+            instrument_name VARCHAR,
+            requested_condition VARCHAR NOT NULL,
+            reason TEXT NOT NULL,
+            requested_by VARCHAR,
+            status VARCHAR NOT NULL DEFAULT 'pending',
+            requested_at VARCHAR NOT NULL,
+            responded_at VARCHAR
+        )
+    """))
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS admin_messages (
+            id SERIAL PRIMARY KEY,
+            from_admin_id INTEGER NOT NULL,
+            from_admin_name VARCHAR,
+            to_user_id INTEGER NOT NULL,
+            to_user_name VARCHAR,
+            message TEXT NOT NULL,
+            created_at VARCHAR NOT NULL,
+            read_at VARCHAR
+        )
+    """))
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS new_instrument_alerts (
+            id SERIAL PRIMARY KEY,
+            instrument_code VARCHAR NOT NULL,
+            instrument_name VARCHAR NOT NULL,
+            serial_number VARCHAR,
+            added_at VARCHAR NOT NULL
+        )
+    """))
     conn.commit()
 
 app.include_router(auth.router)
 app.include_router(instruments.router)
 app.include_router(dispatches.router)
 app.include_router(logs.router)
+app.include_router(messages_router.router)
 
 
 @app.get("/")

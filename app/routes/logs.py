@@ -89,3 +89,64 @@ def get_instrument_history(actor: str | None = None, limit: int = 100, db: Sessi
         """), {"limit": limit})
     rows = result.fetchall()
     return [dict(row._mapping) for row in rows]
+
+
+@router.post("/revert-requests")
+def post_revert_requests(entries: List[dict], db: Session = Depends(get_db)):
+    for e in entries:
+        existing = db.execute(text(
+            "SELECT id FROM revert_requests WHERE instrument_code = :code AND requested_at = :ts"
+        ), {"code": e.get("instrument_code"), "ts": e.get("requested_at")}).first()
+        if not existing:
+            db.execute(text("""
+                INSERT INTO revert_requests
+                    (instrument_code, instrument_name, requested_condition, reason,
+                     requested_by, status, requested_at)
+                VALUES
+                    (:code, :name, :cond, :reason, :by, 'pending', :ts)
+            """), {
+                "code": e.get("instrument_code"),
+                "name": e.get("instrument_name"),
+                "cond": e.get("requested_condition"),
+                "reason": e.get("reason"),
+                "by": e.get("requested_by"),
+                "ts": e.get("requested_at"),
+            })
+    db.commit()
+    return {"message": "ok"}
+
+
+@router.get("/revert-requests")
+def get_revert_requests(db: Session = Depends(get_db)):
+    rows = db.execute(text(
+        "SELECT * FROM revert_requests WHERE status = 'pending' ORDER BY requested_at DESC"
+    )).mappings().all()
+    return [dict(r) for r in rows]
+
+
+@router.post("/revert-requests/{instrument_code}/respond")
+def respond_revert_request(instrument_code: str, body: dict, db: Session = Depends(get_db)):
+    from fastapi import HTTPException
+    from datetime import datetime
+    status = body.get("status")
+    if status not in ("approved", "denied"):
+        raise HTTPException(status_code=400, detail="status must be 'approved' or 'denied'")
+    db.execute(text("""
+        UPDATE revert_requests
+        SET status = :status, responded_at = :now
+        WHERE instrument_code = :code AND status = 'pending'
+    """), {"status": status, "now": datetime.utcnow().isoformat(), "code": instrument_code})
+    db.commit()
+    return {"message": "ok"}
+
+
+@router.get("/revert-requests/{instrument_code}/decision")
+def get_revert_decision(instrument_code: str, db: Session = Depends(get_db)):
+    row = db.execute(text("""
+        SELECT status, responded_at FROM revert_requests
+        WHERE instrument_code = :code
+        ORDER BY requested_at DESC LIMIT 1
+    """), {"code": instrument_code}).mappings().first()
+    if not row:
+        return {"status": "none"}
+    return dict(row)
