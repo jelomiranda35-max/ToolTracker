@@ -11,6 +11,8 @@ with engine.connect() as conn:
     conn.execute(text("ALTER TABLE instruments ADD COLUMN IF NOT EXISTS scheduled_repair_date VARCHAR"))
     conn.execute(text("ALTER TABLE instruments ADD COLUMN IF NOT EXISTS scheduled_condemn_date VARCHAR"))
     conn.execute(text("ALTER TABLE instruments ADD COLUMN IF NOT EXISTS notes TEXT"))
+    conn.execute(text("ALTER TABLE instruments ADD COLUMN IF NOT EXISTS last_calibrated_date VARCHAR"))
+    conn.execute(text("ALTER TABLE instruments ADD COLUMN IF NOT EXISTS calibration_notes TEXT"))
     conn.execute(text("""
         CREATE TABLE IF NOT EXISTS activity_log (
             id SERIAL PRIMARY KEY,

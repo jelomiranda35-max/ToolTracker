@@ -29,6 +29,8 @@ class InstrumentResponse(BaseModel):
     scheduled_repair_date: Optional[str] = None
     scheduled_condemn_date: Optional[str] = None
     notes: Optional[str] = None
+    last_calibrated_date: Optional[str] = None
+    calibration_notes: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -38,9 +40,11 @@ class InstrumentPatch(BaseModel):
     """Partial update — only fields provided will be updated."""
     current_condition: Optional[str] = None
     location: Optional[str] = None
-    scheduled_repair_date: Optional[str] = None   # pass empty string "" to clear
-    scheduled_condemn_date: Optional[str] = None  # pass empty string "" to clear
-    notes: Optional[str] = None                   # pass empty string "" to clear
+    scheduled_repair_date: Optional[str] = None
+    scheduled_condemn_date: Optional[str] = None
+    notes: Optional[str] = None
+    last_calibrated_date: Optional[str] = None
+    calibration_notes: Optional[str] = None
 
 @router.get("/", response_model=list[InstrumentResponse])
 def get_all_instruments(db: Session = Depends(get_db)):
@@ -67,7 +71,8 @@ def create_instrument(data: InstrumentCreate, db: Session = Depends(get_db)):
         instrument_name=data.instrument_name,
         serial_number=data.serial_number,
         current_condition=data.current_condition,
-        location=data.location
+        location=data.location,
+        last_calibrated_date=datetime.utcnow().strftime('%Y-%m-%d'),
     )
     db.add(instrument)
     db.commit()
@@ -141,6 +146,16 @@ def patch_instrument(
 
     if data.notes is not None:
         instrument.notes = data.notes if data.notes != "" else None
+
+    if data.last_calibrated_date is not None:
+        instrument.last_calibrated_date = (
+            data.last_calibrated_date if data.last_calibrated_date != "" else None
+        )
+
+    if data.calibration_notes is not None:
+        instrument.calibration_notes = (
+            data.calibration_notes if data.calibration_notes != "" else None
+        )
 
     instrument.last_updated = datetime.utcnow()
     db.commit()

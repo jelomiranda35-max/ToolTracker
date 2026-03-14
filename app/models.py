@@ -34,6 +34,8 @@ class Instrument(Base):
     scheduled_repair_date = Column(String, nullable=True)
     scheduled_condemn_date = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
+    last_calibrated_date = Column(String, nullable=True)
+    calibration_notes = Column(Text, nullable=True)
 
 
 class Dispatch(Base):
