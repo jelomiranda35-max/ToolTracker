@@ -44,12 +44,14 @@ def get_unread_messages(
     current_user: User = Depends(get_current_user),
 ):
     rows = db.execute(text("""
-        SELECT id, from_admin_id, from_admin_name, message, created_at
+        SELECT id, from_admin_id, from_admin_name, to_user_id, to_user_name,
+               message, created_at, read_at
         FROM admin_messages
         WHERE to_user_id = :uid AND read_at IS NULL
         ORDER BY created_at DESC
     """), {"uid": current_user.id}).mappings().all()
     return [dict(r) for r in rows]
+
 
 
 @router.get("/admin/status")
