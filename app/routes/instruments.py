@@ -72,6 +72,23 @@ def create_instrument(data: InstrumentCreate, db: Session = Depends(get_db)):
     db.add(instrument)
     db.commit()
     db.refresh(instrument)
+    # Notify all staff devices of the new instrument
+    try:
+        from sqlalchemy import text as sql_text
+        db.execute(sql_text("""
+            INSERT INTO new_instrument_alerts
+                (instrument_code, instrument_name, serial_number, added_at)
+            VALUES
+                (:code, :name, :serial, :now)
+        """), {
+            "code": instrument.instrument_code,
+            "name": instrument.instrument_name,
+            "serial": instrument.serial_number,
+            "now": datetime.utcnow().isoformat(),
+        })
+        db.commit()
+    except Exception:
+        pass
     return instrument
 
 @router.put("/{instrument_code}", response_model=InstrumentResponse)
