@@ -161,3 +161,18 @@ def patch_instrument(
     db.commit()
     db.refresh(instrument)
     return instrument
+
+@router.delete("/{instrument_code}")
+def delete_instrument(
+    instrument_code: str,
+    db: Session = Depends(get_db),
+):
+    """Permanently delete an instrument by code. Called when admin approves condemnation."""
+    instrument = db.query(Instrument).filter(
+        Instrument.instrument_code == instrument_code
+    ).first()
+    if not instrument:
+        raise HTTPException(status_code=404, detail="Instrument not found")
+    db.delete(instrument)
+    db.commit()
+    return {"message": f"Instrument '{instrument_code}' permanently deleted"}
