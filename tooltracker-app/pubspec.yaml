@@ -1,0 +1,45 @@
+name: amtec_tool_tracker
+description: "AMTEC Tool Tracker - Agricultural Machinery Testing and Evaluation Center, UPLB"
+publish_to: 'none'
+
+version: 1.2.0+2
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  camera: ^0.10.5+9
+  cupertino_icons: ^1.0.8
+  sqflite: ^2.4.2
+  path: ^1.9.1
+  provider: ^6.1.5+1
+  http: ^1.6.0
+  connectivity_plus: ^7.0.0
+  shared_preferences: ^2.5.4
+  intl: ^0.20.2
+  mobile_scanner: ^7.2.0
+  excel: ^4.0.2
+  permission_handler: ^11.3.1
+  sensors_plus: ^6.1.0
+  path_provider: ^2.1.2
+  image_picker: ^1.0.7
+
+dev_dependencies:
+  flutter_launcher_icons: ^0.14.1
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/amtec_logo.png
+
+flutter_icons:
+  android: true
+  ios: false
+  image_path: "assets/amtec_logo.png"
+  adaptive_icon_background: "#0D1B2A"   # your dark navy bg
+  adaptive_icon_foreground: "assets/amtec_logo.png"
