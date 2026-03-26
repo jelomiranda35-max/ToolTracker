@@ -124,13 +124,7 @@ class _DispatchExportScreenState extends State<DispatchExportScreen> {
     return docs.path;
   }
 
-  Future<void> _exportSimpleInstrumentList({
-    required String title,
-    required String fileName,
-    required List<Instrument> instruments,
-    List<String>? extraHeaders,
-    List<String> Function(Instrument)? extraCells,
-  }) async {
+
     setState(() => _loading = true);
     try {
       final excel = Excel.createExcel();

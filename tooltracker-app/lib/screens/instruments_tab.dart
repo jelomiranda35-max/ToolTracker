@@ -7,7 +7,6 @@
 
 import 'dart:io';
 import 'package:excel/excel.dart' hide Border;
-import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,7 +33,6 @@ Future<void> checkOverdueAlerts(
   Instrument.setOverdueThreshold(threshold);
 
   if (!context.mounted) return;
-  final instruments = await DBHelper.instance.getAllInstruments();
 
   // Notifications are shown in the notification bell — no bottom snackbars
 }
@@ -644,15 +642,7 @@ class _InstrumentListSubTabState extends State<_InstrumentListSubTab> {
     );
   }
 
-  Future<void> _exportSelectedHistory(List<String> codes, Map<String, String> names) async {
-    try {
-      final excel = Excel.createExcel();
-      excel.delete('Sheet1');
-      final now = DateTime.now();
 
-      for (final code in codes) {
-        final name = names[code] ?? code;
-        final safeSheet = name.length > 28 ? name.substring(0, 28) : name;
         final sheet = excel[safeSheet];
 
         // Title row
@@ -1718,12 +1708,7 @@ class _UpcomingSubTabState extends State<_UpcomingSubTab> {
     );
   }
 
-  Widget _checkboxTile({
-    required BuildContext ctx,
-    required bool value,
-    required Color color,
-    required IconData icon,
-    required String title,
+
     required String subtitle,
     required ValueChanged<bool?> onChanged,
   }) {
@@ -1764,25 +1749,9 @@ class _UpcomingSubTabState extends State<_UpcomingSubTab> {
     );
   }
 
-  void _writeHeaders(Sheet sheet, List<String> headers) {
-    sheet.appendRow(headers.map((h) => TextCellValue(h)).toList());
-    for (int c = 0; c < headers.length; c++) {
-      final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0));
-      cell.cellStyle = CellStyle(
-        bold: true,
-        backgroundColorHex: ExcelColor.fromHexString('#1E3A5F'),
-        fontColorHex: ExcelColor.fromHexString('#F5A623'),
-      );
-    }
-  }
 
-  void _showSuccessDialog(String path) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1A3A5C),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Row(children: [
+
+
           Icon(Icons.check_circle, color: Colors.green, size: 22),
           SizedBox(width: 8),
           Text('Export Complete',
@@ -1817,10 +1786,7 @@ class _UpcomingSubTabState extends State<_UpcomingSubTab> {
     );
   }
 
-  void _snack(String msg, Color color) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
-  }
+
 
   @override
   Widget build(BuildContext context) {

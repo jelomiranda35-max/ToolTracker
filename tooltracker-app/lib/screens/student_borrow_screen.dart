@@ -370,13 +370,7 @@ class _StudentRecordsSubTabState extends State<_StudentRecordsSubTab> {
     );
   }
 
-  Widget _datePickerTile({
-    required BuildContext ctx,
-    required String label,
-    required bool isSet,
-    required VoidCallback onTap,
-    VoidCallback? onClear,
-  }) {
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -408,12 +402,7 @@ class _StudentRecordsSubTabState extends State<_StudentRecordsSubTab> {
     );
   }
 
-  // FIX 3 + FIX 4: updated _export with Downloads path and optional unreturned sheet
-  Future<void> _export({
-    required DateTime from,
-    required DateTime to,
-    required bool includeUnreturned,
-  }) async {
+
     setState(() => _exporting = true);
     try {
       final fromStart = DateTime(from.year, from.month, from.day, 0, 0, 0);

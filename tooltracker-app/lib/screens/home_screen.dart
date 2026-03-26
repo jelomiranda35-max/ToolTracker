@@ -636,7 +636,6 @@ _flipController.addListener(() {
       try {
         final d = DateTime.parse(e['timestamp'] ?? '');
         final now = DateTime.now();
-        final diff = now.difference(d).inDays;
         final today = DateTime(now.year, now.month, now.day);
         final entryDay = DateTime(d.year, d.month, d.day);
         if (entryDay == today) {
@@ -714,7 +713,7 @@ _flipController.addListener(() {
             else
               Expanded(
                 child: _StaffActivityGrouped(
-                  history: history!,
+                  history: history,
                   controller: sc,
                   colors: colors,
                 ),
@@ -3369,7 +3368,8 @@ class _MessageInboxSheetState extends State<_MessageInboxSheet> {
                                             ?.toString() ??
                                         '');
 
-                            return Container(
+                          } catch (_) {
+                  return Container(
                               margin:
                                   const EdgeInsets.only(bottom: 10),
                               padding: const EdgeInsets.all(14),
@@ -3634,12 +3634,10 @@ class _StaffActivityGroupedState extends State<_StaffActivityGrouped> {
             ),
             if (isOpen)
               ...items.map((e) {
-                String ts = '';
                 try {
                   final d = DateTime.parse(e['timestamp'] ?? '');
-                  ts = '${d.day}/${d.month} ${d.hour.toString().padLeft(2,'0')}:${d.minute.toString().padLeft(2,'0')}';
-                } catch (_) {}
-                return Container(
+                  final ts = '${d.day}/${d.month} ${d.hour.toString().padLeft(2,'0')}:${d.minute.toString().padLeft(2,'0')}';
+                  return Container(
                   margin: const EdgeInsets.only(bottom: 5, left: 8),
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
