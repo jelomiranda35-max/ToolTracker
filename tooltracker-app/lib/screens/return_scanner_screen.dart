@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/db_helper.dart';
 import '../models/dispatch.dart';
+import '../services/api_service.dart';
 
 class ReturnScannerScreen extends StatefulWidget {
   final Dispatch dispatch;
@@ -436,6 +437,30 @@ class _ReturnScannerScreenState extends State<ReturnScannerScreen> {
           content: Text('All instruments returned successfully'),
           backgroundColor: Colors.green,
         ));
+        
+        // Sync to Google Sheets (dispatch or borrow return)
+        if (widget.dispatch.dispatchType == 'student') {
+          // Borrow return
+          ApiService.pushToSheets('borrow_returned', {
+            'dispatch_no': widget.dispatch.dispatchNo,
+            'borrower_name': widget.dispatch.studentName,
+            'student_id': widget.dispatch.studentId,
+            'date_out': widget.dispatch.dateOut,
+            'date_in': DateTime.now().toIso8601String(),
+            'instruments': codes,
+            'processed_by': _processedByName,
+          });
+        } else {
+          // Dispatch return
+          ApiService.pushToSheets('dispatch_returned', {
+            'dispatch_no': widget.dispatch.dispatchNo,
+            'test_engineer': widget.dispatch.testEngineer,
+            'date_out': widget.dispatch.dateOut,
+            'date_in': DateTime.now().toIso8601String(),
+            'instruments': codes,
+            'processed_by': _processedByName,
+          });
+        }
       }
     } catch (e) {
       if (mounted) {

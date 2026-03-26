@@ -14,6 +14,7 @@ import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../database/db_helper.dart';
 import '../models/instrument.dart';
+import '../services/api_service.dart';
 import 'dispatch_export_screen.dart';
 
 enum InstrumentFilter { all, overdue, forRepair, condemned, upcoming }
@@ -3189,6 +3190,18 @@ class _InstrumentEditSheetState extends State<_InstrumentEditSheet> {
             content: Text('Instrument updated'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2)));
+        // Sync to Google Sheets
+        ApiService.pushToSheets('instrument_updated', {
+          'code': widget.instrument.instrumentCode,
+          'name': widget.instrument.instrumentName,
+          'condition': _condition,
+          'status': widget.instrument.status,
+          'location': _locationCtrl.text.trim(),
+          'serial_no': widget.instrument.serialNumber,
+          'days_out': widget.instrument.daysOut,
+          'scheduled_repair': _repairDate?.toIso8601String().split('T').first,
+          'scheduled_condemn': _condemnDate?.toIso8601String().split('T').first,
+        });
       }
     } catch (e) {
       if (mounted) {

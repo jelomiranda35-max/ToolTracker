@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../database/db_helper.dart';
 import '../models/dispatch.dart';
 import '../models/instrument.dart';
+import '../services/api_service.dart';
 import 'scanner_screen.dart';
 
 class DispatchScreen extends StatefulWidget {
@@ -127,6 +128,16 @@ class _DispatchScreenState extends State<DispatchScreen> {
               content: Text('Dispatch created successfully'),
               backgroundColor: Colors.green),
         );
+        
+        // Sync to Google Sheets
+        ApiService.pushToSheets('dispatch_created', {
+          'dispatch_no': dispatch.dispatchNo,
+          'test_engineer': dispatch.testEngineer,
+          'date_out': dispatch.dateOut,
+          'instruments': _scannedItems.map((i) => i.instrumentCode).toList(),
+          'processed_by': _processedByController.text.trim(),
+        });
+        
         Navigator.pop(context);
       }
     } catch (e) {

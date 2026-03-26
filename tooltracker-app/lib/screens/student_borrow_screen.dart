@@ -19,6 +19,7 @@ import 'dispatch_export_screen.dart';
 import '../models/dispatch.dart';
 import '../models/instrument.dart';
 import '../services/sync_service.dart';
+import '../services/api_service.dart';
 import 'scanner_screen.dart';
 import 'return_scanner_screen.dart';
 
@@ -1343,6 +1344,16 @@ class _StudentBorrowFormSubTabState extends State<_StudentBorrowFormSubTab> {
           backgroundColor: Colors.purple.shade700,
           duration: const Duration(seconds: 3),
         ));
+        
+        // Sync to Google Sheets
+        ApiService.pushToSheets('borrow_created', {
+          'dispatch_no': dispatch.dispatchNo,
+          'borrower_name': _studentNameCtrl.text.trim(),
+          'student_id': _studentIdCtrl.text.trim(),
+          'date_out': dispatch.dateOut,
+          'instruments': _scannedItems.map((i) => i.instrumentCode).toList(),
+          'processed_by': userName,
+        });
       }
     } catch (e) {
       if (mounted) {

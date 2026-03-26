@@ -464,4 +464,31 @@ class ApiService {
       return null;
     }
   }
+
+  // ── GOOGLE SHEETS INTEGRATION ────────────────────────────────────────────────
+  // Fire-and-forget pattern: sheets sync failures never block the app
+
+  /// Push data to Google Sheets via Supabase Edge Function.
+  /// 
+  /// Actions:
+  /// - 'dispatch_created': New staff dispatch
+  /// - 'dispatch_returned': Staff dispatch returned
+  /// - 'borrow_created': New student borrow
+  /// - 'borrow_returned': Student borrow returned
+  /// - 'instrument_updated': Instrument condition/schedule changed
+  ///
+  /// Fire-and-forget: failures are logged but don't throw
+  static Future<void> pushToSheets(String action, Map<String, dynamic> data) async {
+    try {
+      final headers = await _authHeaders();
+      await http.post(
+        Uri.parse('$baseUrl/sheets'),
+        headers: headers,
+        body: jsonEncode({'action': action, 'data': data}),
+      ).timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('[SHEETS] Error syncing $action: $e');
+      // Silently continue - sheet sync should never block app functionality
+    }
+  }
 }
